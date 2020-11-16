@@ -1,2 +1,6 @@
 # timescale-benchmark
-benchmark timescaledb
+benchmark timescaledb input from CSV
+
+# Run it
+
+# Output
