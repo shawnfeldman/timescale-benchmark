@@ -4,11 +4,9 @@ import (
 	"flag"
 	"log"
 	"os"
-	"time"
 
+	"github.com/shawnfeldman/timescale-benchmark/internal/benchmark"
 	"github.com/shawnfeldman/timescale-benchmark/internal/db"
-	"github.com/shawnfeldman/timescale-benchmark/internal/input"
-	"github.com/shawnfeldman/timescale-benchmark/internal/workers"
 )
 
 var filePath string
@@ -29,42 +27,7 @@ func main() {
 	if filePath == "" || filePath == "./mycsv.csv" {
 		log.Fatalf("%s must not be empty or default", filePath)
 	}
-
-	streamer := &input.CSVStreamer{Buffer: buffer}
-	streamerChan, streamerErrChan := streamer.Stream(filePath)
-	w := workers.WorkerProcessor{StatsReader: &db.DB{}, Workers: workerThreads, StatsBuffer: buffer}
-	statsChan, workerErrChan := w.Process(streamerChan)
-
-	emptyStat := db.Stat{}
-	sum := 0
-	for {
-		select {
-		case err := <-streamerErrChan: // stream to main err chan
-			if err != nil {
-				log.Fatalf("Failed during streaming %+v", err)
-			}
-
-			break
-		case err := <-workerErrChan: // stream to main err chan
-			if err != nil {
-				log.Fatalf("Failed during workers %+v", err)
-			}
-			break
-		case stats := <-statsChan:
-			if stats != emptyStat {
-				sum += stats.Average
-				// collect stats
-			} else {
-				// TODO: ProcessStats
-				// signal to be done
-				log.Printf("stats done %d", sum)
-				return
-			}
-			break
-		default:
-			time.Sleep(100 * time.Millisecond)
-		}
-
-	}
-
+	b := benchmark.Benchmark{StatsReader: &db.DB{}}
+	stats := b.Run(filePath, workerThreads, buffer)
+	log.Printf("Here is the stats dump %+v", stats)
 }
