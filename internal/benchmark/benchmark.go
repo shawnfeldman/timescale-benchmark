@@ -58,7 +58,7 @@ func (b *Benchmark) Run(filePath string, workerThreads, buffer int) (AggregatedS
 				b.ProcessStats(&stats)
 				// collect stats
 			} else {
-				b.Aggregation.MedianQueryTime = SetMedian(b.streamedStats).Milliseconds()
+				b.Aggregation.MedianQueryTime = GetMedian(b.streamedStats).Milliseconds()
 				b.Aggregation.MeanQueryTime = b.Aggregation.TotalTime / int64(b.Aggregation.Count)
 				return b.Aggregation, nil
 			}
@@ -76,7 +76,7 @@ func (b *Benchmark) ProcessStats(stat *db.Stat) {
 	if stat.ExecutionTime.Milliseconds() > b.Aggregation.MaximumQueryTime {
 		b.Aggregation.MaximumQueryTime = executionTime
 	}
-	if stat.ExecutionTime.Milliseconds() < b.Aggregation.MinQueryTime {
+	if stat.ExecutionTime.Milliseconds() < b.Aggregation.MinQueryTime || b.Aggregation.Count == 0 { // account for first
 		b.Aggregation.MinQueryTime = executionTime
 	}
 	b.Aggregation.TotalTime = b.Aggregation.TotalTime + executionTime
@@ -90,8 +90,8 @@ func StatToParam(stat *db.Stat) input.QueryParams {
 	return input.QueryParams{Host: stat.Host, Start: stat.Start, End: stat.End}
 }
 
-// SetMedian Set the Median
-func SetMedian(stats []db.Stat) time.Duration {
+// GetMedian Set the Median
+func GetMedian(stats []db.Stat) time.Duration {
 	// sort the stats
 	sort.SliceStable(stats, func(i, j int) bool {
 		return stats[i].ExecutionTime < stats[j].ExecutionTime
@@ -102,5 +102,6 @@ func SetMedian(stats []db.Stat) time.Duration {
 		return stats[mid].ExecutionTime
 	}
 	// else average the two medians
-	return (stats[mid].ExecutionTime + stats[mid-1].ExecutionTime) / 2
+	middle := (stats[mid].ExecutionTime.Milliseconds() + stats[mid-1].ExecutionTime.Milliseconds())
+	return time.Duration(middle/2) * time.Millisecond
 }

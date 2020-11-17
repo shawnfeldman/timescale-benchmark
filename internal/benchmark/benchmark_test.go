@@ -26,7 +26,17 @@ func TestErrorOutput(t *testing.T) {
 	assert.Equal(t, "Failed during workers: Failed to get to db", err.Error())
 }
 
-func TestIntegration(t *testing.T) {
+func TestSetMedian(t *testing.T) {
+	stats := []db.Stat{db.Stat{ExecutionTime: 1 * time.Millisecond}, db.Stat{ExecutionTime: 3 * time.Millisecond}, db.Stat{ExecutionTime: 4 * time.Millisecond}}
+	median := benchmark.GetMedian(stats)
+	assert.Equal(t, 3*time.Millisecond, median)
+}
+func TestSetMedianWithEven(t *testing.T) {
+	stats := []db.Stat{db.Stat{ExecutionTime: 1 * time.Millisecond}, db.Stat{ExecutionTime: 2 * time.Millisecond}, db.Stat{ExecutionTime: 3 * time.Millisecond}, db.Stat{ExecutionTime: 4 * time.Millisecond}}
+	median := benchmark.GetMedian(stats)
+	assert.Equal(t, 2*time.Millisecond, median)
+}
+func TestSimpleEndToEnd(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
@@ -38,7 +48,25 @@ func TestIntegration(t *testing.T) {
 	stats, err := b.Run("ok.csv", 10, 10)
 	assert.Nil(t, err)
 	log.WithField("stats", stats).Info()
+	assert.True(t, stats.MeanQueryTime > 0)
+}
 
+func TestManyIntegrations(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+	log.SetOutput(os.Stdout)
+	log.SetFormatter(&log.JSONFormatter{PrettyPrint: true})
+	db := &db.DB{}
+	db.Open("localhost", 5432, "homework", "postgres", "")
+	trailingCount := 200
+	for i := 0; i < 10; i++ {
+		b := benchmark.Benchmark{StatsReader: db}
+		stats, err := b.Run("ok.csv", 10, 10)
+		assert.Nil(t, err)
+		assert.True(t, stats.MeanQueryTime > 0)
+		assert.Equal(t, trailingCount, stats.Count)
+	}
 }
 
 // DB Database representation
