@@ -23,7 +23,7 @@ var (
 )
 
 func init() {
-	flag.StringVar(&filePath, "file", "./mycsv.csv", "path to csv file for query param input")
+	flag.StringVar(&filePath, "file", "db/query_params.csv", "path to csv file for query param input")
 	flag.StringVar(&host, "host", "localhost", "postgres host")
 	flag.StringVar(&user, "user", "postgres", "postgres user")
 	flag.StringVar(&password, "password", "", "postgres password")
