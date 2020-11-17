@@ -1,6 +1,6 @@
 # timescale-benchmark
  
-benchmark timescaledb using a csv as input for the queries
+benchmark timescaledb using a csv as input for the queries.  output will appear on console as json
 
 [See Architecture](docs/ARCHITECTURE.md)
 
