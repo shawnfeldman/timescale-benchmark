@@ -12,3 +12,5 @@ The CSV Streamer create a buffered stream to pass Query Parameters read from the
 The Worker Fan out will read the buffered stream and assign each Query Param to a worker by host name.  The Host Name is hashed and modulod across the max worker count to ensure we consistently deliver worker to the same worker.  Each worker is started as a go func and will read from a set of channels its been assigned.  Assignment is on startup.  The worker will maintain the same slot in the "hash ring".  The worker will connect to the db via a dependency passed in from the main process.  We will query from postgres/timescale using each query param.  This will ensure the connection pool is shared and all workers use the same resource.  Once the worker is done it will publish stats on a buffered channel for the stats aggregation.  
 
 Stats Aggregation running in the main thread will continually pull off the buffered channel and aggregate all stats.  It will then print the results to the terminal and potentially export to CSV.
+
+![Diagram](benchmark.png)
