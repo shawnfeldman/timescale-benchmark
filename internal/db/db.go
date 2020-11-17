@@ -3,7 +3,6 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"time"
 
 	_ "github.com/lib/pq" // importing postgres driver
@@ -67,7 +66,6 @@ func (d *DB) Run(host string, start time.Time, end time.Time) (Stat, error) {
 
 	usageStats := make([]UsageStats, 0)
 	for rows.Next() {
-		log.Println()
 		var bucket time.Time
 		var max float32
 		var min float32
