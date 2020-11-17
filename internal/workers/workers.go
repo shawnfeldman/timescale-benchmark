@@ -36,6 +36,14 @@ func (w *WorkerProcessor) Process(streamParams chan input.QueryParams) (chan db.
 			for q := range c {
 				if q.Host != "" { // check for drain on closed channel
 					stat, err := w.StatsReader.Run(q.Host, q.Start, q.End)
+					log.WithError(err).WithFields(log.Fields{
+						"worker": worker,
+						"host":   q.Host,
+						"start":  q.Start,
+						"end":    q.End,
+						"stat":   stat,
+					}).Debug()
+
 					atomic.AddInt32(&transactionCount, 1)
 
 					if err != nil {
