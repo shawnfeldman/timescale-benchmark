@@ -4,7 +4,6 @@ benchmark timescaledb using a csv as input for the queries
 
 [See Architecture](docs/ARCHITECTURE.md)
 
-
 # Running timescale
 1. Run `docker-compose build`
 2. To start timescale run `docker-compose up`
