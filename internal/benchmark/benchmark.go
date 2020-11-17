@@ -1,7 +1,8 @@
 package benchmark
 
 import (
-	"log"
+	"fmt"
+	"sort"
 	"time"
 
 	"github.com/shawnfeldman/timescale-benchmark/internal/db"
@@ -11,7 +12,9 @@ import (
 
 // Benchmark runner
 type Benchmark struct {
-	StatsReader db.StatsReader
+	StatsReader   db.StatsReader
+	Aggregation   AggregatedStats
+	streamedStats []db.Stat
 }
 
 /*
@@ -20,48 +23,44 @@ processing time across all queries, the minimum query time (for a single query),
 query time, the average query time, and the maximum query time.
 */
 
-// Stats stores the total stats across the benchmark run
-type Stats struct {
+// AggregatedStats stores the total stats across the benchmark run
+type AggregatedStats struct {
 	TotalTime        int64
 	MinQueryTime     int64
-	MinQuery         input.QueryParams
 	MedianQueryTime  int64
-	MedianQuery      input.QueryParams
-	AverageQueryTime int64
+	MeanQueryTime    int64
 	MaximumQueryTime int64
-	MaximumQuery     input.QueryParams
+	Count            int
 }
 
 // Run the csv stream based on file path, buffer and workerThreads limit capactiy
-func (b *Benchmark) Run(filePath string, workerThreads, buffer int) Stats {
+func (b *Benchmark) Run(filePath string, workerThreads, buffer int) (AggregatedStats, error) {
 	streamer := &input.CSVStreamer{Buffer: buffer}
 	streamerChan, streamerErrChan := streamer.Stream(filePath)
 	w := workers.WorkerProcessor{StatsReader: b.StatsReader, Workers: workerThreads, StatsBuffer: buffer}
 	statsChan, workerErrChan := w.Process(streamerChan)
 
-	sum := 0
 	for {
 		select {
 		case err := <-streamerErrChan: // stream to main err chan
 			if err != nil {
-				log.Fatalf("Failed during streaming %+v", err)
+				return b.Aggregation, fmt.Errorf("Failed during streaming: %+v", err)
 			}
 
 			break
 		case err := <-workerErrChan: // stream to main err chan
 			if err != nil {
-				log.Fatalf("Failed during workers %+v", err)
+				return b.Aggregation, fmt.Errorf("Failed during workers: %+v", err)
 			}
 			break
 		case stats := <-statsChan:
 			if stats.Host != "" {
-				sum += stats.Average
+				b.ProcessStats(&stats)
 				// collect stats
 			} else {
-				// TODO: ProcessStats
-				// signal to be done
-				log.Printf("stats done %d", sum)
-				return Stats{TotalTime: int64(sum)}
+				b.Aggregation.MedianQueryTime = SetMedian(b.streamedStats).Milliseconds()
+				b.Aggregation.MeanQueryTime = b.Aggregation.TotalTime / int64(b.Aggregation.Count)
+				return b.Aggregation, nil
 			}
 			break
 		default:
@@ -69,4 +68,39 @@ func (b *Benchmark) Run(filePath string, workerThreads, buffer int) Stats {
 		}
 
 	}
+}
+
+// ProcessStats process new stats from db and add to aggregation, use pointer to prevent new mem allocation
+func (b *Benchmark) ProcessStats(stat *db.Stat) {
+	executionTime := stat.ExecutionTime.Milliseconds()
+	if stat.ExecutionTime.Milliseconds() > b.Aggregation.MaximumQueryTime {
+		b.Aggregation.MaximumQueryTime = executionTime
+	}
+	if stat.ExecutionTime.Milliseconds() < b.Aggregation.MinQueryTime {
+		b.Aggregation.MinQueryTime = executionTime
+	}
+	b.Aggregation.TotalTime = b.Aggregation.TotalTime + executionTime
+	b.Aggregation.Count++
+	// dereference the point because slices are really just pointers
+	b.streamedStats = append(b.streamedStats, *stat)
+}
+
+// StatToParam convert Stat point to Query Param
+func StatToParam(stat *db.Stat) input.QueryParams {
+	return input.QueryParams{Host: stat.Host, Start: stat.Start, End: stat.End}
+}
+
+// SetMedian Set the Median
+func SetMedian(stats []db.Stat) time.Duration {
+	// sort the stats
+	sort.SliceStable(stats, func(i, j int) bool {
+		return stats[i].ExecutionTime < stats[j].ExecutionTime
+	})
+	mid := len(stats) / 2
+	// if odd return the clear median
+	if len(stats)%2 == 1 {
+		return stats[mid].ExecutionTime
+	}
+	// else average the two medians
+	return (stats[mid].ExecutionTime + stats[mid-1].ExecutionTime) / 2
 }

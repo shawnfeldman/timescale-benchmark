@@ -3,7 +3,6 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"time"
 
 	_ "github.com/lib/pq" // importing postgres driver
@@ -23,8 +22,8 @@ ORDER BY one_min DESC`
 // UsageStats internal query stats from timescale
 type UsageStats struct {
 	Bucket time.Time
-	Max    float32
-	Min    float32
+	Max    float64
+	Min    float64
 }
 
 // Stat representation
@@ -32,7 +31,6 @@ type Stat struct {
 	Host          string
 	Start         time.Time
 	End           time.Time
-	Average       int
 	UsageStats    []UsageStats
 	ExecutionTime time.Duration
 }
@@ -55,7 +53,7 @@ func (d *DB) Open(host string, port int, dbName, user, password string) error {
 	return err
 }
 
-// Run it
+// Run and aggregate results
 func (d *DB) Run(host string, start time.Time, end time.Time) (Stat, error) {
 	now := time.Now()
 	rows, err := d.db.Query(query, host, start, end)
@@ -67,10 +65,9 @@ func (d *DB) Run(host string, start time.Time, end time.Time) (Stat, error) {
 
 	usageStats := make([]UsageStats, 0)
 	for rows.Next() {
-		log.Println()
 		var bucket time.Time
-		var max float32
-		var min float32
+		var max float64
+		var min float64
 
 		err = rows.Scan(&bucket, &max, &min)
 		if err != nil {

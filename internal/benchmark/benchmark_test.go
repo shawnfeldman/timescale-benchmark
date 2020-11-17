@@ -1,19 +1,44 @@
 package benchmark_test
 
 import (
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/shawnfeldman/timescale-benchmark/internal/benchmark"
 	"github.com/shawnfeldman/timescale-benchmark/internal/db"
-
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestIntegration(t *testing.T) {
+func TestBenchmarkOutput(t *testing.T) {
 	b := benchmark.Benchmark{StatsReader: &MockDB{}}
-	stats := b.Run("../../db/query_params.csv", 10, 10)
-	assert.True(t, stats.TotalTime > 20)
+	stats, err := b.Run("ok.csv", 10, 10)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(0), stats.TotalTime)
+}
+
+func TestErrorOutput(t *testing.T) {
+	b := benchmark.Benchmark{StatsReader: &MockErrDB{}}
+	_, err := b.Run("ok.csv", 10, 10)
+	assert.NotNil(t, err)
+	assert.Equal(t, "Failed during workers: Failed to get to db", err.Error())
+}
+
+func TestIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+	log.SetOutput(os.Stdout)
+	log.SetFormatter(&log.JSONFormatter{PrettyPrint: true})
+	db := &db.DB{}
+	err := db.Open("localhost", 5432, "homework", "postgres", "")
+	b := benchmark.Benchmark{StatsReader: db}
+	stats, err := b.Run("ok.csv", 10, 10)
+	assert.Nil(t, err)
+	log.WithField("stats", stats).Info()
+
 }
 
 // DB Database representation
@@ -22,5 +47,14 @@ type MockDB struct {
 
 // Run it
 func (d *MockDB) Run(host string, start time.Time, end time.Time) (db.Stat, error) {
-	return db.Stat{Host: "test", Average: 1}, nil
+	return db.Stat{Host: "test", ExecutionTime: 1, Start: time.Now(), End: time.Now(), UsageStats: []db.UsageStats{db.UsageStats{Bucket: time.Now(), Max: 10.0, Min: 1.0}}}, nil
+}
+
+// DB Database err representation
+type MockErrDB struct {
+}
+
+// Run it
+func (d *MockErrDB) Run(host string, start time.Time, end time.Time) (db.Stat, error) {
+	return db.Stat{Host: "test", ExecutionTime: 1}, fmt.Errorf("Failed to get to db")
 }

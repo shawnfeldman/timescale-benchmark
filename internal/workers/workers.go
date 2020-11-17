@@ -2,12 +2,12 @@ package workers
 
 import (
 	"hash/fnv"
-	"log"
 	"sync"
 	"sync/atomic"
 
 	"github.com/shawnfeldman/timescale-benchmark/internal/db"
 	"github.com/shawnfeldman/timescale-benchmark/internal/input"
+	log "github.com/sirupsen/logrus"
 )
 
 // WorkerProcessor processes work funneled by streamer
@@ -36,6 +36,14 @@ func (w *WorkerProcessor) Process(streamParams chan input.QueryParams) (chan db.
 			for q := range c {
 				if q.Host != "" { // check for drain on closed channel
 					stat, err := w.StatsReader.Run(q.Host, q.Start, q.End)
+					log.WithError(err).WithFields(log.Fields{
+						"worker": worker,
+						"host":   q.Host,
+						"start":  q.Start,
+						"end":    q.End,
+						"stat":   stat,
+					}).Debug()
+
 					atomic.AddInt32(&transactionCount, 1)
 
 					if err != nil {
@@ -66,7 +74,7 @@ func (w *WorkerProcessor) Process(streamParams chan input.QueryParams) (chan db.
 
 		// wait for completion on all workers
 		wg.Wait()
-		log.Printf("Done Reading Processing  Workers and All Connections closed transactions: %d", transactionCount)
+		log.WithField("transactions", transactionCount).Debug("Done Reading Processing  Workers and All Connections closed transactions")
 	}()
 
 	return statsChan, errChan

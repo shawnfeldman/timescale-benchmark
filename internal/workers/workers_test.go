@@ -19,7 +19,7 @@ func TestSingleInsert(t *testing.T) {
 	statsChan, errChan := w.Process(streamer)
 	streamer <- input.QueryParams{Host: "a", Start: time.Now(), End: time.Now()}
 	stat := <-statsChan
-	assert.Equal(t, 1, stat.Average)
+	assert.Equal(t, time.Duration(1), stat.ExecutionTime)
 	close(streamer)
 	err := <-errChan
 	assert.Nil(t, err)
@@ -32,7 +32,7 @@ func TestSingleError(t *testing.T) {
 	statsChan, errChan := w.Process(streamer)
 	streamer <- input.QueryParams{Host: "a", Start: time.Now(), End: time.Now()}
 	stat := <-statsChan
-	assert.Equal(t, 0, stat.Average)
+	assert.Equal(t, time.Duration(0), stat.ExecutionTime)
 	err := <-errChan
 	assert.NotNil(t, err)
 	close(streamer)
@@ -52,7 +52,7 @@ func Test10Inserts(t *testing.T) {
 
 	counter := 0
 	for stat := range statsChan {
-		assert.Equal(t, 1, stat.Average)
+		assert.Equal(t, time.Duration(1), stat.ExecutionTime)
 		counter++
 	}
 	assert.Equal(t, 100, counter)
@@ -66,7 +66,7 @@ type MockDB struct {
 
 // Run it
 func (d *MockDB) Run(host string, start time.Time, end time.Time) (db.Stat, error) {
-	return db.Stat{Average: 1}, nil
+	return db.Stat{ExecutionTime: time.Duration(1)}, nil
 }
 
 // DB Database representation

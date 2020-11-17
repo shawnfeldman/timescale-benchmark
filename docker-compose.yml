@@ -6,10 +6,14 @@ services:
       - .:/go/src
     links:
       - timescaledb
+    depends_on:
+      - timescaledb
   timescaledb: 
     image: timescale/timescaledb:latest-pg12
     ports:
       - "5432:5432"
+    volumes:
+      - .:/tmp/
     environment:
       - POSTGRES_HOST_AUTH_METHOD=trust
     #   # - POSTGRES_PASSWORD=password

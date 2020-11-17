@@ -4,11 +4,11 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"time"
 
 	"github.com/shawnfeldman/timescale-benchmark/internal/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 // Streamer interface
@@ -37,6 +37,7 @@ const (
 func (s *CSVStreamer) Stream(filePath string) (chan QueryParams, chan error) {
 	outChan := make(chan QueryParams, s.Buffer)
 	errChan := make(chan error)
+	line := 1
 	go func() {
 		defer close(errChan)
 		defer close(outChan)
@@ -46,7 +47,7 @@ func (s *CSVStreamer) Stream(filePath string) (chan QueryParams, chan error) {
 			return
 		}
 		r := csv.NewReader(csvFile)
-		for line := 1; ; line++ {
+		for ; ; line++ {
 			record, err := r.Read()
 			if err == io.EOF {
 				break
@@ -89,7 +90,7 @@ func (s *CSVStreamer) Stream(filePath string) (chan QueryParams, chan error) {
 			// send the param to the hash slot
 			outChan <- q
 		}
-		log.Printf("Done streaming file")
+		log.WithField("file", filePath).WithField("rows", line).Debug("Done streaming file")
 
 	}()
 	return outChan, errChan
