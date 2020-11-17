@@ -27,8 +27,8 @@ query time, the average query time, and the maximum query time.
 type AggregatedStats struct {
 	TotalTime        int64
 	MinQueryTime     int64
-	MedianQueryTime  int64
-	MeanQueryTime    int64
+	MedianQueryTime  float64
+	MeanQueryTime    float64
 	MaximumQueryTime int64
 	Count            int
 }
@@ -58,8 +58,8 @@ func (b *Benchmark) Run(filePath string, workerThreads, buffer int) (AggregatedS
 				b.ProcessStats(&stats)
 				// collect stats
 			} else {
-				b.Aggregation.MedianQueryTime = GetMedian(b.streamedStats).Milliseconds()
-				b.Aggregation.MeanQueryTime = b.Aggregation.TotalTime / int64(b.Aggregation.Count)
+				b.Aggregation.MedianQueryTime = GetMedian(b.streamedStats)
+				b.Aggregation.MeanQueryTime = float64(b.Aggregation.TotalTime) / float64(b.Aggregation.Count)
 				return b.Aggregation, nil
 			}
 			break
@@ -91,7 +91,7 @@ func StatToParam(stat *db.Stat) input.QueryParams {
 }
 
 // GetMedian Set the Median
-func GetMedian(stats []db.Stat) time.Duration {
+func GetMedian(stats []db.Stat) float64 {
 	// sort the stats
 	sort.SliceStable(stats, func(i, j int) bool {
 		return stats[i].ExecutionTime < stats[j].ExecutionTime
@@ -99,9 +99,9 @@ func GetMedian(stats []db.Stat) time.Duration {
 	mid := len(stats) / 2
 	// if odd return the clear median
 	if len(stats)%2 == 1 {
-		return stats[mid].ExecutionTime
+		return float64(stats[mid].ExecutionTime.Milliseconds())
 	}
 	// else average the two medians
 	middle := (stats[mid].ExecutionTime.Milliseconds() + stats[mid-1].ExecutionTime.Milliseconds())
-	return time.Duration(middle/2) * time.Millisecond
+	return float64(middle) / float64(2)
 }

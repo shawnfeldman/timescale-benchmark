@@ -29,12 +29,12 @@ func TestErrorOutput(t *testing.T) {
 func TestSetMedian(t *testing.T) {
 	stats := []db.Stat{db.Stat{ExecutionTime: 1 * time.Millisecond}, db.Stat{ExecutionTime: 3 * time.Millisecond}, db.Stat{ExecutionTime: 4 * time.Millisecond}}
 	median := benchmark.GetMedian(stats)
-	assert.Equal(t, 3*time.Millisecond, median)
+	assert.Equal(t, float64(3), median)
 }
 func TestSetMedianWithEven(t *testing.T) {
 	stats := []db.Stat{db.Stat{ExecutionTime: 1 * time.Millisecond}, db.Stat{ExecutionTime: 2 * time.Millisecond}, db.Stat{ExecutionTime: 3 * time.Millisecond}, db.Stat{ExecutionTime: 4 * time.Millisecond}}
 	median := benchmark.GetMedian(stats)
-	assert.Equal(t, 2*time.Millisecond, median)
+	assert.Equal(t, 2.5, median)
 }
 func TestSimpleEndToEnd(t *testing.T) {
 	if testing.Short() {
