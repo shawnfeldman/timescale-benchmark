@@ -55,7 +55,7 @@ func (d *DB) Open(host string, port int, dbName, user, password string) error {
 	return err
 }
 
-// Run it
+// Run and aggregate results
 func (d *DB) Run(host string, start time.Time, end time.Time) (Stat, error) {
 	now := time.Now()
 	rows, err := d.db.Query(query, host, start, end)
