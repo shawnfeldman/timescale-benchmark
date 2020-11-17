@@ -20,6 +20,7 @@ var (
 	dbname        = "homework"
 	format        = "terminal"
 	debug         = false
+	pretty        = true
 )
 
 func init() {
@@ -29,13 +30,14 @@ func init() {
 	flag.StringVar(&password, "password", "", "postgres password")
 	flag.StringVar(&dbname, "db", "homework", "postgres db name")
 	flag.BoolVar(&debug, "debug", false, "set debug: true or false")
+	flag.BoolVar(&pretty, "pretty_print", false, "set pretty_print: true or false, true will print across multiple lines")
+
 	flag.IntVar(&port, "port", 5432, "postgres port")
 
 	flag.IntVar(&workerThreads, "workers", 10, "number of workers processing file work")
 	flag.IntVar(&buffer, "buffer", 20, "file buffer to limit concurrency on files")
 
 	log.SetOutput(os.Stdout)
-	log.SetFormatter(&log.JSONFormatter{PrettyPrint: true})
 }
 
 func main() {
@@ -43,6 +45,8 @@ func main() {
 	if debug {
 		log.SetLevel(log.DebugLevel)
 	}
+	log.SetFormatter(&log.JSONFormatter{PrettyPrint: pretty})
+
 	if filePath == "" || filePath == "./mycsv.csv" {
 		log.WithField("file", filePath).Fatal("File Path must not be empty or default")
 	}
