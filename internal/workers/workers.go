@@ -2,12 +2,12 @@ package workers
 
 import (
 	"hash/fnv"
-	"log"
 	"sync"
 	"sync/atomic"
 
 	"github.com/shawnfeldman/timescale-benchmark/internal/db"
 	"github.com/shawnfeldman/timescale-benchmark/internal/input"
+	log "github.com/sirupsen/logrus"
 )
 
 // WorkerProcessor processes work funneled by streamer
@@ -66,7 +66,7 @@ func (w *WorkerProcessor) Process(streamParams chan input.QueryParams) (chan db.
 
 		// wait for completion on all workers
 		wg.Wait()
-		log.Printf("Done Reading Processing  Workers and All Connections closed transactions: %d", transactionCount)
+		log.WithField("transactions", transactionCount).Debug("Done Reading Processing  Workers and All Connections closed transactions")
 	}()
 
 	return statsChan, errChan

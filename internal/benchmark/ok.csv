@@ -1,0 +1,3 @@
+hostname,start_time,end_time
+mytesthost,2017-01-01 08:59:22,2017-01-01 09:59:22
+mytesthost,2017-01-02 08:59:22,2017-01-01 09:59:22
