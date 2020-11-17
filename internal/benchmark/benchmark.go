@@ -12,6 +12,7 @@ import (
 // Benchmark runner
 type Benchmark struct {
 	StatsReader db.StatsReader
+	Aggregation Stats
 }
 
 /*
@@ -22,13 +23,13 @@ query time, the average query time, and the maximum query time.
 
 // Stats stores the total stats across the benchmark run
 type Stats struct {
-	TotalTime        int64
-	MinQueryTime     int64
+	TotalTime        time.Duration
+	MinQueryTime     time.Duration
 	MinQuery         input.QueryParams
-	MedianQueryTime  int64
+	MedianQueryTime  time.Duration
 	MedianQuery      input.QueryParams
-	AverageQueryTime int64
-	MaximumQueryTime int64
+	AverageQueryTime time.Duration
+	MaximumQueryTime time.Duration
 	MaximumQuery     input.QueryParams
 }
 
@@ -39,7 +40,6 @@ func (b *Benchmark) Run(filePath string, workerThreads, buffer int) Stats {
 	w := workers.WorkerProcessor{StatsReader: b.StatsReader, Workers: workerThreads, StatsBuffer: buffer}
 	statsChan, workerErrChan := w.Process(streamerChan)
 
-	sum := 0
 	for {
 		select {
 		case err := <-streamerErrChan: // stream to main err chan
@@ -55,18 +55,26 @@ func (b *Benchmark) Run(filePath string, workerThreads, buffer int) Stats {
 			break
 		case stats := <-statsChan:
 			if stats.Host != "" {
-				sum += stats.Average
+				b.ProcessStats(&stats)
 				// collect stats
 			} else {
-				// TODO: ProcessStats
 				// signal to be done
-				log.Printf("stats done %d", sum)
-				return Stats{TotalTime: int64(sum)}
+				return b.Aggregation
 			}
 			break
 		default:
 			time.Sleep(100 * time.Millisecond)
 		}
 
+	}
+}
+
+// ProcessStats process new stats from db and add to aggregation
+func (b *Benchmark) ProcessStats(stat *db.Stat) {
+	if stat.ExecutionTime > b.Aggregation.MaximumQueryTime {
+		b.Aggregation.MaximumQueryTime = stat.ExecutionTime
+	}
+	if stat.ExecutionTime < b.Aggregation.MinQueryTime {
+		b.Aggregation.MinQueryTime = stat.ExecutionTime
 	}
 }
