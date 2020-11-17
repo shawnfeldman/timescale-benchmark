@@ -13,7 +13,7 @@ import (
 func TestIntegration(t *testing.T) {
 	b := benchmark.Benchmark{StatsReader: &MockDB{}}
 	stats := b.Run("../../db/query_params.csv", 10, 10)
-	assert.True(t, stats.TotalTime > 2000)
+	assert.True(t, stats.TotalTime > 20)
 }
 
 // DB Database representation
@@ -22,5 +22,5 @@ type MockDB struct {
 
 // Run it
 func (d *MockDB) Run(host string, start time.Time, end time.Time) (db.Stat, error) {
-	return db.Stat{Average: 100}, nil
+	return db.Stat{Host: "test", Average: 1}, nil
 }

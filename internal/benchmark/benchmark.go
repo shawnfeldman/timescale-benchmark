@@ -39,7 +39,6 @@ func (b *Benchmark) Run(filePath string, workerThreads, buffer int) Stats {
 	w := workers.WorkerProcessor{StatsReader: b.StatsReader, Workers: workerThreads, StatsBuffer: buffer}
 	statsChan, workerErrChan := w.Process(streamerChan)
 
-	emptyStat := db.Stat{}
 	sum := 0
 	for {
 		select {
@@ -55,7 +54,7 @@ func (b *Benchmark) Run(filePath string, workerThreads, buffer int) Stats {
 			}
 			break
 		case stats := <-statsChan:
-			if stats != emptyStat {
+			if stats.Host != "" {
 				sum += stats.Average
 				// collect stats
 			} else {
