@@ -10,6 +10,7 @@ benchmark timescaledb using a csv as input for the queries
 3. To load the time series data run `docker-compose exec timescaledb psql -U postgres -h localhost -f /tmp/db/cpu_usage.sql`
 4. to see the process run automatically, kill `docker-compose up`
 5. run `docker-compose up | grep benchmark_1`
+6. had some issues getting the sql in using one step so thats why its a start and kill for now
 
 # Running the Tests
 To run the tests we can use the make file, assuming you have go installed
