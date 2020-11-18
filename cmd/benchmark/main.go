@@ -32,7 +32,7 @@ func init() {
 	flag.StringVar(&password, "password", "", "postgres password")
 	flag.StringVar(&dbname, "db", "homework", "postgres db name")
 	flag.BoolVar(&debug, "debug", false, "set debug: true or false")
-	flag.BoolVar(&pretty, "pretty_print", false, "set pretty_print: true or false, true will print across multiple lines")
+	flag.BoolVar(&pretty, "pretty_print", true, "set pretty_print: true or false, true will print across multiple lines")
 
 	flag.IntVar(&port, "port", 5432, "postgres port")
 	flag.IntVar(&runs, "runs", 1, "number of runs to display")
@@ -40,6 +40,12 @@ func init() {
 	flag.IntVar(&buffer, "buffer", 20, "file buffer to limit concurrency on files")
 
 	log.SetOutput(os.Stdout)
+}
+
+// MultiRunStats add additional stats over aggregation
+type MultiRunStats struct {
+	benchmark.AggregatedStats
+	MeanRunTotalTime float64
 }
 
 func main() {
@@ -58,8 +64,9 @@ func main() {
 		log.WithError(err).Fatal("Failed to connect to db")
 	}
 
+	multiRunStats := MultiRunStats{}
 	for i := 0; i < runs; i++ {
-		b := benchmark.NewBenchmark(fmt.Sprintf("%d", i), db)
+		b := benchmark.NewBenchmark(fmt.Sprintf("%d", i+1), db)
 		stats, err := b.Run(filePath, workerThreads, buffer)
 		if err != nil {
 			log.WithError(err).Fatal("Failed to run benchmark")
@@ -73,6 +80,27 @@ func main() {
 			"mean_execution_time_ms":   stats.MeanQueryTime,
 			"max_execution_time_ms":    stats.MaximumQueryTime,
 			"number_queries":           stats.Count,
-		}).Info("Benchmark Complete")
+			"threads_run":              workerThreads,
+		}).Info("Benchmark Run")
+		multiRunStats.Count += stats.Count
+		multiRunStats.TotalTime += stats.TotalTime
+		if stats.MaximumQueryTime > multiRunStats.MaximumQueryTime {
+			multiRunStats.MaximumQueryTime = stats.MaximumQueryTime
+		}
+		if i == 0 || stats.MinQueryTime < multiRunStats.MinQueryTime {
+			multiRunStats.MinQueryTime = stats.MinQueryTime
+		}
+	}
+	if runs > 1 {
+		multiRunStats.MeanQueryTime = float64(multiRunStats.TotalTime) / float64(multiRunStats.Count)
+		log.WithFields(log.Fields{
+			"run_id":                  "all",
+			"total_execution_time_ms": multiRunStats.TotalTime,
+			"min_execution_time_ms":   multiRunStats.MinQueryTime,
+			"mean_execution_time_ms":  multiRunStats.MeanQueryTime,
+			"max_execution_time_ms":   multiRunStats.MaximumQueryTime,
+			"number_queries":          multiRunStats.Count,
+			//"median_execution_time_ms": multiRunStats.MedianQueryTime, tbd
+		}).Info("All Benchmark Runs Complete")
 	}
 }
