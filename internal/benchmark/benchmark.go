@@ -12,9 +12,15 @@ import (
 
 // Benchmark runner
 type Benchmark struct {
-	StatsReader   db.StatsReader
+	Identifier    string
+	statsReader   db.StatsReader
 	Aggregation   AggregatedStats
 	streamedStats []db.Stat
+}
+
+// NewBenchmark instantiation for benchmark
+func NewBenchmark(id string, db db.StatsReader) Benchmark {
+	return Benchmark{statsReader: db, Identifier: id}
 }
 
 /*
@@ -37,7 +43,7 @@ type AggregatedStats struct {
 func (b *Benchmark) Run(filePath string, workerThreads, buffer int) (AggregatedStats, error) {
 	streamer := &input.CSVStreamer{Buffer: buffer}
 	streamerChan, streamerErrChan := streamer.Stream(filePath)
-	w := workers.WorkerProcessor{StatsReader: b.StatsReader, Workers: workerThreads, StatsBuffer: buffer}
+	w := workers.WorkerProcessor{StatsReader: b.statsReader, Workers: workerThreads, StatsBuffer: buffer}
 	statsChan, workerErrChan := w.Process(streamerChan)
 
 	for {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 
 	"github.com/shawnfeldman/timescale-benchmark/internal/benchmark"
@@ -21,6 +22,7 @@ var (
 	format        = "terminal"
 	debug         = false
 	pretty        = true
+	runs          = 1
 )
 
 func init() {
@@ -33,7 +35,7 @@ func init() {
 	flag.BoolVar(&pretty, "pretty_print", false, "set pretty_print: true or false, true will print across multiple lines")
 
 	flag.IntVar(&port, "port", 5432, "postgres port")
-
+	flag.IntVar(&runs, "runs", 1, "number of runs to display")
 	flag.IntVar(&workerThreads, "workers", 10, "number of workers processing file work")
 	flag.IntVar(&buffer, "buffer", 20, "file buffer to limit concurrency on files")
 
@@ -55,18 +57,22 @@ func main() {
 	if err != nil {
 		log.WithError(err).Fatal("Failed to connect to db")
 	}
-	b := benchmark.Benchmark{StatsReader: db}
-	stats, err := b.Run(filePath, workerThreads, buffer)
-	if err != nil {
-		log.WithError(err).Fatal("Failed to run benchmark")
-	}
 
-	log.WithFields(log.Fields{
-		"total_execution_time_ms":  stats.TotalTime,
-		"min_execution_time_ms":    stats.MinQueryTime,
-		"median_execution_time_ms": stats.MedianQueryTime,
-		"mean_execution_time_ms":   stats.MeanQueryTime,
-		"max_execution_time_ms":    stats.MaximumQueryTime,
-		"number_queries":           stats.Count,
-	}).Info("Benchmark Complete")
+	for i := 0; i < runs; i++ {
+		b := benchmark.NewBenchmark(fmt.Sprintf("%d", i), db)
+		stats, err := b.Run(filePath, workerThreads, buffer)
+		if err != nil {
+			log.WithError(err).Fatal("Failed to run benchmark")
+		}
+
+		log.WithFields(log.Fields{
+			"run_id":                   b.Identifier,
+			"total_execution_time_ms":  stats.TotalTime,
+			"min_execution_time_ms":    stats.MinQueryTime,
+			"median_execution_time_ms": stats.MedianQueryTime,
+			"mean_execution_time_ms":   stats.MeanQueryTime,
+			"max_execution_time_ms":    stats.MaximumQueryTime,
+			"number_queries":           stats.Count,
+		}).Info("Benchmark Complete")
+	}
 }
