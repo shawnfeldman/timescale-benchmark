@@ -1,4 +1,4 @@
-package benchmark_test
+package benchmark
 
 import (
 	"fmt"
@@ -6,21 +6,20 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shawnfeldman/timescale-benchmark/internal/benchmark"
 	"github.com/shawnfeldman/timescale-benchmark/internal/db"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestBenchmarkOutput(t *testing.T) {
-	b := benchmark.Benchmark{StatsReader: &MockDB{}}
+	b := Benchmark{statsReader: &MockDB{}}
 	stats, err := b.Run("ok.csv", 10, 10)
 	assert.Nil(t, err)
 	assert.Equal(t, int64(0), stats.TotalTime)
 }
 
 func TestErrorOutput(t *testing.T) {
-	b := benchmark.Benchmark{StatsReader: &MockErrDB{}}
+	b := Benchmark{statsReader: &MockErrDB{}}
 	_, err := b.Run("ok.csv", 10, 10)
 	assert.NotNil(t, err)
 	assert.Equal(t, "Failed during workers: Failed to get to db", err.Error())
@@ -28,12 +27,12 @@ func TestErrorOutput(t *testing.T) {
 
 func TestSetMedian(t *testing.T) {
 	stats := []db.Stat{db.Stat{ExecutionTime: 1 * time.Millisecond}, db.Stat{ExecutionTime: 3 * time.Millisecond}, db.Stat{ExecutionTime: 4 * time.Millisecond}}
-	median := benchmark.GetMedian(stats)
+	median := GetMedian(stats)
 	assert.Equal(t, float64(3), median)
 }
 func TestSetMedianWithEven(t *testing.T) {
 	stats := []db.Stat{db.Stat{ExecutionTime: 1 * time.Millisecond}, db.Stat{ExecutionTime: 2 * time.Millisecond}, db.Stat{ExecutionTime: 3 * time.Millisecond}, db.Stat{ExecutionTime: 4 * time.Millisecond}}
-	median := benchmark.GetMedian(stats)
+	median := GetMedian(stats)
 	assert.Equal(t, 2.5, median)
 }
 func TestSimpleEndToEnd(t *testing.T) {
@@ -44,7 +43,7 @@ func TestSimpleEndToEnd(t *testing.T) {
 	log.SetFormatter(&log.JSONFormatter{PrettyPrint: true})
 	db := &db.DB{}
 	err := db.Open("localhost", 5432, "homework", "postgres", "")
-	b := benchmark.Benchmark{StatsReader: db}
+	b := Benchmark{statsReader: db}
 	stats, err := b.Run("ok.csv", 10, 10)
 	assert.Nil(t, err)
 	log.WithField("stats", stats).Info()
@@ -61,7 +60,7 @@ func TestManyIntegrations(t *testing.T) {
 	db.Open("localhost", 5432, "homework", "postgres", "")
 	trailingCount := 200
 	for i := 0; i < 10; i++ {
-		b := benchmark.Benchmark{StatsReader: db}
+		b := Benchmark{statsReader: db}
 		stats, err := b.Run("ok.csv", 10, 10)
 		assert.Nil(t, err)
 		assert.True(t, stats.MeanQueryTime > 0)
